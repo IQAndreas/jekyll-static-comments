@@ -59,7 +59,13 @@ foreach ($_POST as $key => $value) {
 	$msg .= "$key: $value\n";
 }
 
-if (mail($EMAIL_ADDRESS, $SUBJECT, $msg, "From: $EMAIL_ADDRESS"))
+$header = "From: $EMAIL_ADDRESS\r\n";
+$header .= "Content-type:text/plain; charset=utf-8\r\n";
+
+//Make sure subject is in UTF-8 format as well
+$SUBJECT = '=?UTF-8?B?'.base64_encode($SUBJECT).'?=';
+
+if (mail($EMAIL_ADDRESS, $SUBJECT, $msg, $header))
 {
 	include $COMMENT_RECEIVED;
 }
