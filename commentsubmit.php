@@ -53,6 +53,27 @@ function filter_email($input)
 	return strtr($input, $rules);
 }
 
+function get_post_data_as_yaml()
+{
+	$yaml_data = "";
+	
+	foreach ($_POST as $key => $value) 
+	{
+		if (strstr($value, "\n") != "") 
+		{
+			// Value has newlines... need to indent them so the YAML
+			// looks right
+			$value = str_replace("\n", "\n  ", $value);
+		}
+		// It's easier just to single-quote everything than to try and work
+		// out what might need quoting
+		$value = "'" . str_replace("'", "''", $value) . "'";
+		$yaml_data .= "$key: $value\n";
+	}
+	
+	return $yaml_data;
+}
+
 
 $EMAIL_ADDRESS = filter_email($EMAIL_ADDRESS);
 $COMMENTER_NAME = filter_name(get_post_field('name', "Anonymous"));
@@ -71,18 +92,8 @@ $post_id = $_POST["post_id"];
 unset($_POST["post_id"]);
 $message = "post_id: $post_id\n";
 $message .= "date: " . date($DATE_FORMAT) . "\n";
+$message .= get_post_data_as_yaml();
 
-foreach ($_POST as $key => $value) {
-	if (strstr($value, "\n") != "") {
-		// Value has newlines... need to indent them so the YAML
-		// looks right
-		$value = str_replace("\n", "\n  ", $value);
-	}
-	// It's easier just to single-quote everything than to try and work
-	// out what might need quoting
-	$value = "'" . str_replace("'", "''", $value) . "'";
-	$message .= "$key: $value\n";
-}
 
 if (mail($EMAIL_ADDRESS, $subject, $message, $headers))
 {
