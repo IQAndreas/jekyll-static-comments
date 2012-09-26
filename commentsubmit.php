@@ -53,36 +53,84 @@ function filter_email($input)
 	return strtr($input, $rules);
 }
 
+// Taken from http://php.net/manual/en/function.preg-replace.php#80412
+function filter_filename($filename, $replace = "")
+{
+	$reserved = preg_quote('\/:*?"<>|', '/'); //characters that are  illegal on any of the 3 major OS's
+	//replaces all characters up through space and all past ~ along with the above reserved characters
+	return preg_replace("/([\\x00-\\x20\\x7f-\\xff{$reserved}]+)/", $replace, $filename);
+}
+
+function get_post_data_as_yaml()
+{
+	$yaml_data = "";
+	
+	foreach ($_POST as $key => $value) 
+	{
+		if (strstr($value, "\n") != "") 
+		{
+			// Value has newlines... need to indent them so the YAML
+			// looks right
+			$value = str_replace("\n", "\n  ", $value);
+		}
+		// It's easier just to single-quote everything than to try and work
+		// out what might need quoting
+		$value = "'" . str_replace("'", "''", $value) . "'";
+		$yaml_data .= "$key: $value\n";
+	}
+	
+	return $yaml_data;
+}
+
 
 $EMAIL_ADDRESS = filter_email($EMAIL_ADDRESS);
+
 $COMMENTER_NAME = filter_name(get_post_field('name', "Anonymous"));
 $COMMENTER_EMAIL_ADDRESS = filter_email(get_post_field('email', $EMAIL_ADDRESS));
-$POST_TITLE = get_post_field('post_title', "Unknown post");
+$COMMENTER_WEBSITE = get_post_field('link');
+$COMMENT_BODY = get_post_field('comment', "");
+$COMMENT_DATE = date($DATE_FORMAT);
 
+$POST_TITLE = get_post_field('post_title', "Unknown post");
+$POST_ID = get_post_field('post_id', "");
+unset($_POST['post_id']);
+
+
+$yaml_data = "post_id: $POST_ID\n";
+$yaml_data .= "date: $COMMENT_DATE\n";
+$yaml_data .= get_post_data_as_yaml();
+
+$attachment_data = chunk_split(base64_encode($yaml_data));
+$attachment_date = date('Y-m-d-H-i-s');
+$attachment_name = filter_filename($POST_ID, '-') . "-comment-$attachment_date.yaml";
+
+
+$uid = md5(uniqid(time()));
 
 $subject = "Comment from $COMMENTER_NAME on '$POST_TITLE'";
+$message = "$COMMENT_BODY\n\n";
+$message .= "----------------------\n";
+$message .= "$COMMENTER_NAME\n";
+$message .= "$COMMENTER_WEBSITE\n";
 
-// NOTE: Uses the "blog owner's" email address for the "From:" field, 
-// not the email address of the commenter.
 $headers = "From: $COMMENTER_NAME <$EMAIL_ADDRESS>\r\n";
 $headers .= (!empty($COMMENTER_EMAIL_ADDRESS)) ? "Reply-To: $COMMENTER_NAME <$COMMENTER_EMAIL_ADDRESS>\r\n" : "";
 
-$post_id = $_POST["post_id"];
-unset($_POST["post_id"]);
-$message = "post_id: $post_id\n";
-$message .= "date: " . date($DATE_FORMAT) . "\n";
+$headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
+$headers .= "MIME-Version: 1.0\r\n";
+$headers .= "Content-Type: multipart/mixed; boundary=\"$uid\"\r\n\r\n";
+$headers .= "This is a multi-part message in MIME format.\r\n";
+$headers .= "--$uid\r\n";
+$headers .= "Content-type:text/plain; charset=iso-8859-1\r\n";
+$headers .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
+$headers .= "$message\r\n\r\n";
+$headers .= "--$uid\r\n";
+$headers .= "Content-Type: application/octet-stream; name=\"$attachment_name\"\r\n";
+$headers .= "Content-Transfer-Encoding: base64\r\n";
+$headers .= "Content-Disposition: attachment; filename=\"$attachment_name\"\r\n\r\n";
+$headers .= "$attachment_data\r\n\r\n";
+$headers .= "--$uid--";
 
-foreach ($_POST as $key => $value) {
-	if (strstr($value, "\n") != "") {
-		// Value has newlines... need to indent them so the YAML
-		// looks right
-		$value = str_replace("\n", "\n  ", $value);
-	}
-	// It's easier just to single-quote everything than to try and work
-	// out what might need quoting
-	$value = "'" . str_replace("'", "''", $value) . "'";
-	$message .= "$key: $value\n";
-}
 
 if (mail($EMAIL_ADDRESS, $subject, $message, $headers))
 {
