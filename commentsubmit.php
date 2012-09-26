@@ -56,13 +56,16 @@ function filter_email($input)
 
 $EMAIL_ADDRESS = filter_email($EMAIL_ADDRESS);
 $COMMENTER_NAME = filter_name(get_post_field('name', "Anonymous"));
+$COMMENTER_EMAIL_ADDRESS = filter_email(get_post_field('email', $EMAIL_ADDRESS));
 $POST_TITLE = get_post_field('post_title', "Unknown post");
+
 
 $subject = "Comment from $COMMENTER_NAME on '$POST_TITLE'";
 
 // NOTE: Uses the "blog owner's" email address for the "From:" field, 
 // not the email address of the commenter.
 $headers = "From: $COMMENTER_NAME <$EMAIL_ADDRESS>\r\n";
+$headers .= (!empty($COMMENTER_EMAIL_ADDRESS)) ? "Reply-To: $COMMENTER_NAME <$COMMENTER_EMAIL_ADDRESS>\r\n" : "";
 
 $post_id = $_POST["post_id"];
 unset($_POST["post_id"]);
