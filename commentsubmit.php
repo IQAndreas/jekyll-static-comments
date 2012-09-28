@@ -108,6 +108,8 @@ $attachment_name = filter_filename($POST_ID, '-') . "-comment-$attachment_date.y
 $uid = md5(uniqid(time()));
 
 $subject = "Comment from $COMMENTER_NAME on '$POST_TITLE'";
+$subject = '=?UTF-8?B?'.base64_encode($subject).'?=';
+
 $message = "$COMMENT_BODY\n\n";
 $message .= "----------------------\n";
 $message .= "$COMMENTER_NAME\n";
@@ -121,8 +123,8 @@ $headers .= "MIME-Version: 1.0\r\n";
 $headers .= "Content-Type: multipart/mixed; boundary=\"$uid\"\r\n\r\n";
 $headers .= "This is a multi-part message in MIME format.\r\n";
 $headers .= "--$uid\r\n";
-$headers .= "Content-type:text/plain; charset=iso-8859-1\r\n";
-$headers .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
+$headers .= "Content-Type:text/plain; charset=utf-8\r\n";
+$headers .= "Content-Transfer-Encoding: 8bit\r\n";
 $headers .= "$message\r\n\r\n";
 $headers .= "--$uid\r\n";
 $headers .= "Content-Type: application/octet-stream; name=\"$attachment_name\"\r\n";
