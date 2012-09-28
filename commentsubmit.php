@@ -32,6 +32,11 @@ $EMAIL_ADDRESS = "blogger@example.com";
 // content.
 $COMMENT_RECEIVED = "comment_received.html";
 
+// If the emails arrive in your client "garbled", you may need to change this
+// line to "\n" instead.
+$HEADER_LINE_ENDING = "\r\n";
+
+
 /****************************************************************************
  * HERE BE CODE
  ****************************************************************************/
@@ -115,26 +120,39 @@ $message .= "----------------------\n";
 $message .= "$COMMENTER_NAME\n";
 $message .= "$COMMENTER_WEBSITE\n";
 
-$headers = "From: $COMMENTER_NAME <$EMAIL_ADDRESS>\r\n";
-$headers .= (!empty($COMMENTER_EMAIL_ADDRESS)) ? "Reply-To: $COMMENTER_NAME <$COMMENTER_EMAIL_ADDRESS>\r\n" : "";
+$header = "";
+function add_header($value = "")
+{
+	global $header, $HEADER_LINE_ENDING;
+	// Not passing any value will only add a line ending
+	$header .= $value . $HEADER_LINE_ENDING;
+}
 
-$headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
-$headers .= "MIME-Version: 1.0\r\n";
-$headers .= "Content-Type: multipart/mixed; boundary=\"$uid\"\r\n\r\n";
-$headers .= "This is a multi-part message in MIME format.\r\n";
-$headers .= "--$uid\r\n";
-$headers .= "Content-Type:text/plain; charset=utf-8\r\n";
-$headers .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
-$headers .= "$message\r\n\r\n";
-$headers .= "--$uid\r\n";
-$headers .= "Content-Type: application/octet-stream; name=\"$attachment_name\"\r\n";
-$headers .= "Content-Transfer-Encoding: base64\r\n";
-$headers .= "Content-Disposition: attachment; filename=\"$attachment_name\"\r\n\r\n";
-$headers .= "$attachment_data\r\n\r\n";
-$headers .= "--$uid--\r\n";
+add_header("From: $COMMENTER_NAME <$EMAIL_ADDRESS>");
+if (!empty($COMMENTER_EMAIL_ADDRESS)) add_header("Reply-To: $COMMENTER_NAME <$COMMENTER_EMAIL_ADDRESS>");
+
+add_header("X-Mailer: PHP/" . phpversion());
+add_header("MIME-Version: 1.0");
+add_header("Content-Type: multipart/mixed; boundary=\"$uid\"");
+add_header();
+add_header("This is a multi-part message in MIME format.");
+add_header("--$uid"); // PLAIN-TEXT MESSAGE
+add_header("Content-Type: text/plain; charset=utf-8");
+add_header("Content-Transfer-Encoding: 8bit");
+add_header();
+add_header("$message");
+add_header();
+add_header("--$uid"); // COMMENT ATTACHMENT
+add_header("Content-Type: application/octet-stream; name=\"$attachment_name\"");
+add_header("Content-Transfer-Encoding: base64");
+add_header("Content-Disposition: attachment; filename=\"$attachment_name\"");
+add_header();
+add_header("$attachment_data");
+add_header();
+add_header("--$uid--");
 
 
-if (mail($EMAIL_ADDRESS, $subject, "", $headers))
+if (mail($EMAIL_ADDRESS, $subject, "", $header))
 {
 	include $COMMENT_RECEIVED;
 }
