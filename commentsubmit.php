@@ -124,17 +124,17 @@ $headers .= "Content-Type: multipart/mixed; boundary=\"$uid\"\r\n\r\n";
 $headers .= "This is a multi-part message in MIME format.\r\n";
 $headers .= "--$uid\r\n";
 $headers .= "Content-Type:text/plain; charset=utf-8\r\n";
-$headers .= "Content-Transfer-Encoding: 8bit\r\n";
+$headers .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
 $headers .= "$message\r\n\r\n";
 $headers .= "--$uid\r\n";
 $headers .= "Content-Type: application/octet-stream; name=\"$attachment_name\"\r\n";
 $headers .= "Content-Transfer-Encoding: base64\r\n";
 $headers .= "Content-Disposition: attachment; filename=\"$attachment_name\"\r\n\r\n";
 $headers .= "$attachment_data\r\n\r\n";
-$headers .= "--$uid--";
+$headers .= "--$uid--\r\n";
 
 
-if (mail($EMAIL_ADDRESS, $subject, $message, $headers))
+if (mail($EMAIL_ADDRESS, $subject, "", $headers))
 {
 	include $COMMENT_RECEIVED;
 }
