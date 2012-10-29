@@ -10,12 +10,13 @@ comments with posts and rendering them all as one big, awesome page.
 1. Put the `static_comments.rb` file in the `_plugins` directory of your
 Jekyll site.
 
-1. Edit the variables at the top of `commentsubmit.php`, and then place it
-somewhere suitable in your site.
+1. Put all in the files inside of `php` into the directory of your site 
+running PHP. 
 
-1. Modify `comment_received.html` to your liking (add a YAML front-matter to
-render it in your site's style, for instance) and then place it alongside
-`commentsubmit.php`.
+1. Edit the variables at the top of `commentsubmit.php`.
+
+1. Modify `comment_received.html` and `comment_contains_spam.html` to your 
+liking (add a YAML front-matter to render it in your site's style, for instance).
 
 1. Using `comment_template.html` as a base, add the appropriate code to your
 blog post template.  Remember to provide an appropriate URL to
@@ -68,15 +69,19 @@ submission.
 Of course, the tricky bit in all this is getting the comments from your
 users into the filesystem.  For that, I'm using the `commentsubmit.php` in
 this repo, which simply takes all the fields in your comment form, dumps
-them straight into YAML, and e-mails it to me.  However, you can do whatever
-you like -- save them somewhere on your webserver for you to scp down later,
-or go the whole hog and have them automatically committed to your git repo
-and the site regenerated.
+them straight into a YAML, and e-mails it to me as an attachment. However, 
+you can do whatever you like -- save them somewhere on your webserver for 
+you to scp down later, or go the whole hog and have them automatically 
+committed to your git repo and the site regenerated.
 
 E-mailing the comments to you, though, is a fairly natural workflow.  You
-just save the comments out to your `_comments` directory, then re-generate
+just save the YAML attachment to your `_comments` directory, then re-generate
 the site and upload.  This provides a natural "moderation" mechanism, at the
 expense of discouraging wide-ranging "realtime" discussion.
+
+All email is automatically checked for "spammy" keywords before being sent. 
+These keywords can be found in `spam_blacklist_keywords.txt`. Read the comments 
+at the top of the file for instructions on how to edit it.
 
 ## A caveat about Liquid
 
