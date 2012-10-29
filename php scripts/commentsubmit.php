@@ -32,6 +32,11 @@ $EMAIL_ADDRESS = "blogger@example.com";
 // content.
 $COMMENT_RECEIVED = "comment_received.html";
 
+// The contents of the following file (relative to this PHP file) will be
+// displayed if the comment contains spam.  Customise it to your heart's
+// content.
+$COMMENT_CONTAINS_SPAM = "comment_contains_spam.html";
+
 // If the emails arrive in your client "garbled", you may need to change this
 // line to "\n" instead.
 $HEADER_LINE_ENDING = "\r\n";
@@ -42,6 +47,7 @@ $HEADER_LINE_ENDING = "\r\n";
  ****************************************************************************/
 
 require_once 'mail.php';
+require_once 'spamfilter.php';
 
 function get_post_field($key, $defaultValue = "")
 {
@@ -78,6 +84,14 @@ $COMMENT_DATE = date($DATE_FORMAT);
 $POST_TITLE = get_post_field('post_title', "Unknown post");
 $POST_ID = get_post_field('post_id', "");
 unset($_POST['post_id']);
+
+
+$SPAM = spam_check_text($COMMENT_BODY);
+if (!empty($SPAM))
+{
+	include $COMMENT_CONTAINS_SPAM;
+	die();
+}
 
 
 $subject = "Comment from $COMMENTER_NAME on '$POST_TITLE'";
