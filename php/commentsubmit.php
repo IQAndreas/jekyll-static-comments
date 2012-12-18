@@ -32,33 +32,26 @@ $EMAIL_ADDRESS = "blogger@example.com";
 // content.
 $COMMENT_RECEIVED = "comment_received.html";
 
+// The contents of the following file (relative to this PHP file) will be
+// displayed if the comment contains spam.  Customise it to your heart's
+// content.
+$COMMENT_CONTAINS_SPAM = "comment_contains_spam.html";
+
+// If the emails arrive in your client "garbled", you may need to change this
+// line to "\n" instead.
+$HEADER_LINE_ENDING = "\r\n";
+
+
 /****************************************************************************
  * HERE BE CODE
  ****************************************************************************/
 
+require_once 'mail.php';
+require_once 'spamfilter.php';
+
 function get_post_field($key, $defaultValue = "")
 {
 	return (isset($_POST[$key]) && !empty($_POST[$key])) ? $_POST[$key] : $defaultValue;
-}
-
-function filter_name($input)
-{
-	$rules = array( "\r" => '', "\n" => '', "\t" => '', '"'  => "'", '<'  => '[', '>'  => ']' );
-	return trim(strtr($input, $rules));
-}
-
-function filter_email($input)
-{
-	$rules = array( "\r" => '', "\n" => '', "\t" => '', '"'  => '', ','  => '', '<'  => '', '>'  => '' );
-	return strtr($input, $rules);
-}
-
-// Taken from http://php.net/manual/en/function.preg-replace.php#80412
-function filter_filename($filename, $replace = "")
-{
-	$reserved = preg_quote('\/:*?"<>|', '/'); //characters that are  illegal on any of the 3 major OS's
-	//replaces all characters up through space and all past ~ along with the above reserved characters
-	return preg_replace("/([\\x00-\\x20\\x7f-\\xff{$reserved}]+)/", $replace, $filename);
 }
 
 function get_post_data_as_yaml()
@@ -82,11 +75,8 @@ function get_post_data_as_yaml()
 	return $yaml_data;
 }
 
-
-$EMAIL_ADDRESS = filter_email($EMAIL_ADDRESS);
-
-$COMMENTER_NAME = filter_name(get_post_field('name', "Anonymous"));
-$COMMENTER_EMAIL_ADDRESS = filter_email(get_post_field('email', $EMAIL_ADDRESS));
+$COMMENTER_NAME = get_post_field('name', "Anonymous");
+$COMMENTER_EMAIL_ADDRESS = get_post_field('email', $EMAIL_ADDRESS);
 $COMMENTER_WEBSITE = get_post_field('link');
 $COMMENT_BODY = get_post_field('comment', "");
 $COMMENT_DATE = date($DATE_FORMAT);
@@ -96,45 +86,37 @@ $POST_ID = get_post_field('post_id', "");
 unset($_POST['post_id']);
 
 
-$yaml_data = "post_id: $POST_ID\n";
-$yaml_data .= "date: $COMMENT_DATE\n";
-$yaml_data .= get_post_data_as_yaml();
+$SPAM = spam_check_text($COMMENT_BODY);
+if (!empty($SPAM))
+{
+	include $COMMENT_CONTAINS_SPAM;
+	die();
+}
 
-$attachment_data = chunk_split(base64_encode($yaml_data));
-$attachment_date = date('Y-m-d-H-i-s');
-$attachment_name = filter_filename($POST_ID, '-') . "-comment-$attachment_date.yaml";
-
-
-$uid = md5(uniqid(time()));
 
 $subject = "Comment from $COMMENTER_NAME on '$POST_TITLE'";
-$subject = '=?UTF-8?B?'.base64_encode($subject).'?=';
 
 $message = "$COMMENT_BODY\n\n";
 $message .= "----------------------\n";
 $message .= "$COMMENTER_NAME\n";
 $message .= "$COMMENTER_WEBSITE\n";
 
-$headers = "From: $COMMENTER_NAME <$EMAIL_ADDRESS>\r\n";
-$headers .= (!empty($COMMENTER_EMAIL_ADDRESS)) ? "Reply-To: $COMMENTER_NAME <$COMMENTER_EMAIL_ADDRESS>\r\n" : "";
+$mail = new Mail($subject, $message);
+$mail->set_from($EMAIL_ADDRESS, $COMMENTER_NAME);
+$mail->set_reply_to($COMMENTER_EMAIL_ADDRESS, $COMMENTER_NAME);
 
-$headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
-$headers .= "MIME-Version: 1.0\r\n";
-$headers .= "Content-Type: multipart/mixed; boundary=\"$uid\"\r\n\r\n";
-$headers .= "This is a multi-part message in MIME format.\r\n";
-$headers .= "--$uid\r\n";
-$headers .= "Content-Type:text/plain; charset=utf-8\r\n";
-$headers .= "Content-Transfer-Encoding: 8bit\r\n";
-$headers .= "$message\r\n\r\n";
-$headers .= "--$uid\r\n";
-$headers .= "Content-Type: application/octet-stream; name=\"$attachment_name\"\r\n";
-$headers .= "Content-Transfer-Encoding: base64\r\n";
-$headers .= "Content-Disposition: attachment; filename=\"$attachment_name\"\r\n\r\n";
-$headers .= "$attachment_data\r\n\r\n";
-$headers .= "--$uid--";
+$yaml_data = "post_id: $POST_ID\n";
+$yaml_data .= "date: $COMMENT_DATE\n";
+$yaml_data .= get_post_data_as_yaml();
+
+$attachment_date = date('Y-m-d-H-i-s');
+$attachment_name = Mail::filter_filename($POST_ID, '-') . "-comment-$attachment_date.yaml";
+
+$mail->header_line_ending = $HEADER_LINE_ENDING;
+$mail->set_attachment($yaml_data, $attachment_name);
 
 
-if (mail($EMAIL_ADDRESS, $subject, $message, $headers))
+if ($mail->send($EMAIL_ADDRESS))
 {
 	include $COMMENT_RECEIVED;
 }
