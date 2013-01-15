@@ -6,7 +6,7 @@
 		{% else %}
 			<h1>{{page.comment_count}} Comments</h1>
 	{% endcase %}
-	{% for c in page.comments %}
+	{% for c in page.comment_list %}
 		<div class="comment {% cycle 'odd', 'even' %}">
 			<p class="comment_header">
 				From: {% if c.link and c.link != '' %}
