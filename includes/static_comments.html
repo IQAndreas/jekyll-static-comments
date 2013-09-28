@@ -1,0 +1,7 @@
+{% if page.comments == true %}
+<section id="comments">
+	{% include comment_list.html %}
+	<h1>Post a comment</h1>
+	{% include comment_form.html %}
+</section>
+{% endif %}
