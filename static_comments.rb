@@ -23,7 +23,7 @@ class Jekyll::Post
 	
 	def to_liquid(attrs = nil)
 		data = to_liquid_without_comments(attrs)
-		data['comment_list'] = StaticComments::find_for(self.site.source, data['id'])
+		data['comment_list'] = StaticComments::find_for(self.site, data['id'])
 		data['comment_count'] = data['comment_list'].length
 		data
 	end
@@ -34,7 +34,7 @@ class Jekyll::Page
 	
 	def to_liquid(attrs = nil)
 		data = to_liquid_without_comments(attrs)
-		data['comment_list'] = StaticComments::find_for(self.site.source, data['id'])
+		data['comment_list'] = StaticComments::find_for(self.site, data['id'])
 		data['comment_count'] = data['comment_list'].length
 		data
 	end
@@ -42,17 +42,18 @@ end
 
 module StaticComments
 	# Find all the comments for a post or page with the specified id
-	def self.find_for(source, id)
-		@comment_list ||= read_comments(source)
+	def self.find_for(site, id)
+		@comment_list ||= read_comments(site)
 		@comment_list[id]
 	end
 	
 	# Read all the comments files in the site, and return them as a hash of
 	# arrays containing the comments, where the key to the array is the value
 	# of the 'post_id' field in the YAML data in the comments files.
-	def self.read_comments(source)
+	def self.read_comments(site)
 		comment_list = Hash.new() { |h, k| h[k] = Array.new }
 		
+		source=site.source
 		Dir["#{source}/**/_comments/**/*"].sort.each do |comment_filename|
 			next unless File.file?(comment_filename) and File.readable?(comment_filename)
 			yaml_data = read_yaml(comment_filename)
