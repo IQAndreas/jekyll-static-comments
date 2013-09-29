@@ -88,6 +88,11 @@ module StaticComments
 			return nil
 		end
 		
+		# Skip the comment if it does not want to be published
+		if (yaml_data.has_key?('published') && yaml_data['published'] == false)
+			return nil
+		end
+		
 		# Reverse compatiblitiy with previous versions of `jekyll-static-comments` wich called the "content" field "comment"
 		if (yaml_data.key?('comment'))
 			yaml_data['content'] = yaml_data['comment']
