@@ -59,8 +59,10 @@ module StaticComments
 		Dir["#{source}/**/_comments/**/*"].sort.each do |comment_filename|
 			next unless File.file?(comment_filename) and File.readable?(comment_filename)
 			yaml_data = read_yaml(comment_filename, site.converters)
-			post_id = yaml_data.delete('post_id')
-			comment_list[post_id] << yaml_data
+			if (yaml_data != nil)
+				post_id = yaml_data.delete('post_id')
+				comment_list[post_id] << yaml_data
+			end
 		end
 		
 		comment_list
@@ -80,8 +82,10 @@ module StaticComments
 			end
 		rescue SyntaxError => e
 			puts "YAML Exception reading #{filename}: #{e.message}"
+			return nil
 		rescue Exception => e
 			puts "Error reading file #{filename}: #{e.message}"
+			return nil
 		end
 		
 		# Reverse compatiblitiy with previous versions of `jekyll-static-comments` wich called the "content" field "comment"
