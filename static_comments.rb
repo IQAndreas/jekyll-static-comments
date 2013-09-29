@@ -41,6 +41,8 @@ class Jekyll::Page
 end
 
 module StaticComments
+	include Liquid::StandardFilters
+	
 	# Find all the comments for a post or page with the specified id
 	def self.find_for(site, id)
 		@comment_list ||= read_comments(site)
@@ -89,14 +91,63 @@ module StaticComments
 		end
 		
 		# Parse Markdown, Textile, or just leave it as-is (such as with HTML) based on filename extension.
-		# The converter that handles the type of extension can be found and adjusted in `configuration.rb`
-		if (converters != nil)
-			file_extension = File.extname(filename)
-			converter = converters.find { |c| c.matches(file_extension) }
-			yaml_data['content'] = converter.convert(yaml_data['content'])
-		end
+		converter = get_converter(filename, converters)
+		yaml_data['content'] = converter.convert(yaml_data['content'])
 		
 		yaml_data
 		
 	end
+	
+	# First the script goes through a few custom converters (I don't want to interfere with the rest
+	# of Jekyll just in case). If none is profided, just use one of the builtin converters.
+	# The default converter that handles the type of extension can be found and adjusted in `configuration.rb`
+	def self.get_converter(filename, stored_converters)
+		file_extension = File.extname(filename)
+		if (PlaintextConverter::matches(file_extension))
+			PlaintextConverter.new()
+		elsif (HTMLConverter::matches(file_extension))
+			HTMLConverter.new(true, true)
+		elsif (stored_converters != nil)
+			# Will use `Jekyll::Converters::Identity` if none matches
+			stored_converters.find { |c| c.matches(file_extension) }
+		end
+	end
+	
+	class PlaintextConverter
+		include Liquid::StandardFilters
+		def self.matches(ext)
+			ext.eql?('.txt')
+		end
+	
+		def convert(content)
+			content = escape(content)
+			content = newline_to_br(content)
+			content
+		end
+	end
+	
+	class HTMLConverter
+		include Liquid::StandardFilters
+		def self.matches(ext)
+			ext.eql?('.html') or ext.eql?('.htm')
+		end
+		
+		def initialize(basic_html, newlines_to_br)
+			@basic_html = basic_html 		 # Strip out some potentially "unwanted" elements such as <script>
+			@newlines_to_br = newlines_to_br # Convert all found newlines into <br /> tags
+		end
+		
+		def convert(content)
+			if (@basic_html)
+				content = content.gsub(/<script.*?<\/script>/m, '')
+				content = content.gsub(/<!--.*?-->/m, '')
+				content = content.gsub(/<style.*?<\/style>/m, '')
+			end
+			if (@newlines_to_br)
+				content = newline_to_br(content)
+			end
+			content
+		end
+	end
 end
+
