@@ -110,8 +110,10 @@ $yaml_data .= "---\n";
 
 $yaml_data .= $COMMENT_BODY;
 
+// Check for missing period before extension (or ignores it if no extension is given)
+if (preg_match('/^[^.].*$/', $COMMENT_FILENAME_EXT)) { $COMMENT_FILENAME_EXT = ".$COMMENT_FILENAME_EXT"; }
 $file_date = date('Y-m-d-H-i-s');
-$file_name = Mail::filter_filename($POST_ID, '-') . "-comment-$file_date.yaml";
+$file_name = Mail::filter_filename($POST_ID, '-') . "-comment-$file_date" . $COMMENT_FILENAME_EXT;
 
 
 $title = "Comment from $COMMENTER_NAME on '$POST_TITLE'";
