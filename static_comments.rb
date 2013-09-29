@@ -56,7 +56,7 @@ module StaticComments
 		source=site.source
 		Dir["#{source}/**/_comments/**/*"].sort.each do |comment_filename|
 			next unless File.file?(comment_filename) and File.readable?(comment_filename)
-			yaml_data = read_yaml(comment_filename)
+			yaml_data = read_yaml(comment_filename, site.converters)
 			post_id = yaml_data.delete('post_id')
 			comment_list[post_id] << yaml_data
 		end
@@ -67,7 +67,7 @@ module StaticComments
 	# Reads the specified file, parses the frontmatter and YAML, and returns the YAML data.
 	# Taken from Jekyll::Convertible, but with a few local modifications.
 	# Some code borrowed from http://stackoverflow.com/a/14232953/617937
-	def self.read_yaml(filename)
+	def self.read_yaml(filename, converters = nil)
 		begin
 			file_contents = File.read(filename)
 			if (md = file_contents.match(/^(?<metadata>---\s*\n.*?\n?)^(---\s*$\n?)/m))
@@ -88,6 +88,15 @@ module StaticComments
 			yaml_data.delete('comment')
 		end
 		
+		# Parse Markdown, Textile, or just leave it as-is (such as with HTML) based on filename extension.
+		# The converter that handles the type of extension can be found and adjusted in `configuration.rb`
+		if (converters != nil)
+			file_extension = File.extname(filename)
+			converter = converters.find { |c| c.matches(file_extension) }
+			yaml_data['content'] = converter.convert(yaml_data['content'])
+		end
+		
 		yaml_data
+		
 	end
 end
