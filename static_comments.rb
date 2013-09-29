@@ -71,7 +71,7 @@ module StaticComments
 			file_contents = File.read(filename)
 			if (md = file_contents.match(/^(?<metadata>---\s*\n.*?\n?)^(---\s*$\n?)/m))
 				yaml_data = YAML.safe_load(md[:metadata])
-				yaml_data['comment'] = md.post_match
+				yaml_data['content'] = md.post_match
 			else # If there is no YAML header, it's all YAML. (reverse compatability with previous versions)
 				yaml_data = YAML.safe_load(file_contents)
 			end
@@ -80,7 +80,13 @@ module StaticComments
 		rescue Exception => e
 			puts "Error reading file #{filename}: #{e.message}"
 		end
-
+		
+		# Reverse compatiblitiy with previous versions of `jekyll-static-comments` wich called the "content" field "comment"
+		if (yaml_data.key?('comment'))
+			yaml_data['content'] = yaml_data['comment']
+			yaml_data.delete('comment')
+		end
+		
 		yaml_data
 	end
 end
