@@ -7,16 +7,16 @@
 	<input type="hidden" name="return_url" value="{{site.url}}{{page.url}}" />
 	<table>
 		<tr>
-			<th>Name:</th>
-			<td><input type="text" size="25" name="name" /> (required)</td>
+			<th><label for="commenter-name">Name:</label></th>
+			<td><input type="text" size="25" id="commenter-name" name="name" /> (required)</td>
 		</tr>
 		<tr>
-			<th>E-mail:</th>
-			<td><input type="text" size="25" name="email" /> (required, not published)</td>
+			<th><label for="commenter-email">E-mail:</label></th>
+			<td><input type="text" size="25" id="commenter-email" name="email" /> (required, not published)</td>
 		</tr>
 		<tr>
-			<th>Website:</th>
-			<td><input type="text" size="25" name="link" /> (optional)</td>
+			<th><label for="commenter-website">Website:</label></th>
+			<td><input type="text" size="25" id="commenter-website" name="link" /> (optional)</td>
 		</tr>
 		<tr>
 			<td colspan="2"><textarea name="comment" rows="10" cols="60" ></textarea></td>
