@@ -41,7 +41,6 @@ class Jekyll::Page
 end
 
 module StaticComments
-	include Liquid::StandardFilters
 	
 	# Find all the comments for a post or page with the specified id
 	def self.find_for(site, id)
@@ -58,68 +57,86 @@ module StaticComments
 		source=site.source
 		Dir["#{source}/**/_comments/**/*"].sort.each do |comment_filename|
 			next unless File.file?(comment_filename) and File.readable?(comment_filename)
-			yaml_data = read_yaml(comment_filename, site.converters)
-			if (yaml_data != nil)
-				post_id = yaml_data.delete('post_id')
-				comment_list[post_id] << yaml_data
+			# `comment_filename` includes everything: the full, absolute path, file name, and extension.
+			comment = Comment.new(site, comment_filename)
+			if (comment.published?)
+				comment_list[comment.post_id] << comment
 			end
 		end
 		
 		comment_list
 	end
 	
-	# Reads the specified file, parses the frontmatter and YAML, and returns the YAML data.
-	# Taken from Jekyll::Convertible, but with a few local modifications.
-	# Some code borrowed from http://stackoverflow.com/a/14232953/617937
-	def self.read_yaml(filename, converters = nil)
-		begin
-			file_contents = File.read(filename)
-			if (md = file_contents.match(/^(?<metadata>---\s*\n.*?\n?)^(---\s*$\n?)/m))
-				yaml_data = YAML.safe_load(md[:metadata])
-				yaml_data['content'] = md.post_match
-			else # If there is no YAML header, it's all YAML. (reverse compatability with previous versions)
-				yaml_data = YAML.safe_load(file_contents)
+	class Comment 
+		include Jekyll::Convertible
+		
+		# Attributes for Liquid templates
+		ATTRIBUTES_FOR_LIQUID = %w[
+			post_id
+			date
+			name
+			link
+			content
+			published
+		]
+		
+		attr_accessor :site
+		attr_accessor :data, :content
+		attr_accessor :post_id, :date, :published
+		attr_accessor :name, :link
+		attr_accessor :path, :dir, :name, :basename, :ext, :output
+		
+		def initialize(site, full_filename)
+			@site = site
+			self.process(full_filename)
+			
+			self.read_yaml(@dir, @name)
+			@post_id   = self.data['post_id']
+			@date      = self.data['date']
+			@name      = self.data['name']
+			@link      = self.data['link']
+			@published = self.published?
+			
+			# Reverse compatiblitiy with previous versions of `jekyll-static-comments` wich called the "content" field "comment"
+			if (data.key?('comment'))
+				@content = data['comment']
+				data.delete('comment')
 			end
-		rescue SyntaxError => e
-			puts "YAML Exception reading #{filename}: #{e.message}"
-			return nil
-		rescue Exception => e
-			puts "Error reading file #{filename}: #{e.message}"
-			return nil
+			
+			# First the script goes through a few custom converters (I don't want to interfere with the rest
+			# of Jekyll just in case). If none is profided, just use one of the builtin converters.
+			# The default converter that handles the type of extension can be found and adjusted in `configuration.rb`
+			@converter = custom_converter || converter
+			
+			self.transform()
 		end
 		
-		# Skip the comment if it does not want to be published
-		if (yaml_data.has_key?('published') && yaml_data['published'] == false)
-			return nil
+		def process(full_filename)
+			@path =     full_filename # Required by Jekyll::Convertible
+			@name =     File.basename(full_filename)
+			@ext =      File.extname(full_filename)
+			@dir =      File.dirname(full_filename)
+			@basename = File.basename(@name, @ext)
 		end
 		
-		# Reverse compatiblitiy with previous versions of `jekyll-static-comments` wich called the "content" field "comment"
-		if (yaml_data.key?('comment'))
-			yaml_data['content'] = yaml_data['comment']
-			yaml_data.delete('comment')
+		def custom_converter
+			if (PlaintextConverter::matches(self.ext))
+				PlaintextConverter.new()
+			elsif (HTMLConverter::matches(self.ext))
+				HTMLConverter.new(true, true)
+			else
+				nil
+			end
 		end
 		
-		# Parse Markdown, Textile, or just leave it as-is (such as with HTML) based on filename extension.
-		converter = get_converter(filename, converters)
-		yaml_data['content'] = converter.convert(yaml_data['content'])
-		
-		yaml_data
-		
-	end
-	
-	# First the script goes through a few custom converters (I don't want to interfere with the rest
-	# of Jekyll just in case). If none is profided, just use one of the builtin converters.
-	# The default converter that handles the type of extension can be found and adjusted in `configuration.rb`
-	def self.get_converter(filename, stored_converters)
-		file_extension = File.extname(filename)
-		if (PlaintextConverter::matches(file_extension))
-			PlaintextConverter.new()
-		elsif (HTMLConverter::matches(file_extension))
-			HTMLConverter.new(true, true)
-		elsif (stored_converters != nil)
-			# Will use `Jekyll::Converters::Identity` if none matches
-			stored_converters.find { |c| c.matches(file_extension) }
+		def published?
+			if self.data.has_key?('published') && self.data['published'] == false
+				false
+			else
+				true
+			end
 		end
+		
 	end
 	
 	class PlaintextConverter
