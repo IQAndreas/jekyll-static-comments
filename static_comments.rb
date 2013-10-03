@@ -50,7 +50,7 @@ module StaticComments
 	
 	# Read all the comments files in the site, and return them as a hash of
 	# arrays containing the comments, where the key to the array is the value
-	# of the 'post_id' field in the YAML data in the comments files.
+	# of the 'page_id' field in the YAML data in the comments files.
 	def self.read_comments(site)
 		comment_list = Hash.new() { |h, k| h[k] = Array.new }
 		
@@ -60,7 +60,7 @@ module StaticComments
 			# `comment_filename` includes everything: the full, absolute path, file name, and extension.
 			comment = Comment.new(site, comment_filename)
 			if (comment.published?)
-				comment_list[comment.post_id] << comment
+				comment_list[comment.page_id] << comment
 			end
 		end
 		
@@ -72,7 +72,7 @@ module StaticComments
 		
 		# Attributes for Liquid templates
 		ATTRIBUTES_FOR_LIQUID = %w[
-			post_id
+			page_id
 			date
 			name
 			link
@@ -82,7 +82,7 @@ module StaticComments
 		
 		attr_accessor :site
 		attr_accessor :data, :content
-		attr_accessor :post_id, :date, :published
+		attr_accessor :page_id, :date, :published
 		attr_accessor :name, :link
 		attr_accessor :path, :dir, :name, :basename, :ext, :output
 		
@@ -91,17 +91,24 @@ module StaticComments
 			self.process(full_filename)
 			
 			self.read_yaml(@dir, @name)
-			@post_id   = self.data['post_id']
 			@date      = self.data['date']
 			@name      = self.data['name']
 			@link      = self.data['link']
 			@published = self.published?
+			
+			# Reverse compatiblitiy with previous versions of `jekyll-static-comments` wich called the "page_id" field "post_id"
+			if (data.key?('post_id'))
+				@page_id = self.data['post_id']
+			else
+				@page_id = self.data['page_id']
+			end
 			
 			# Reverse compatiblitiy with previous versions of `jekyll-static-comments` wich called the "content" field "comment"
 			if (data.key?('comment'))
 				@content = data['comment']
 				data.delete('comment')
 			end
+			
 			
 			# First the script goes through a few custom converters (I don't want to interfere with the rest
 			# of Jekyll just in case). If none is profided, just use one of the builtin converters.
