@@ -5,7 +5,9 @@ include_once 'includes.php';
 function list_file_contents($file_name)
 {
 	$file_path = COMMENTS_DIR . DIRECTORY_SEPARATOR . $file_name;
-	$file_contents_html = nl2br(file_get_contents($file_path));
+	$file_contents = file_get_contents($file_path);
+	$file_contents_html = htmlspecialchars($file_contents);
+	$file_contents_html = nl2br($file_contents_html);
 
 	$delete_link = "comments.php?delete=" . urlencode($file_name);
 	$download_link = "comments.php?download=" . urlencode($file_name);
@@ -16,6 +18,20 @@ function list_file_contents($file_name)
 	echo "] ";
 	echo "<b>$file_name</b>".NL;
 	echo $file_contents_html.HR;
+}
+
+function get_comments()
+{
+	$files = array();
+	$all_files = scandir(COMMENTS_DIR);
+	foreach($all_files as $filename)
+	{
+		if($filename === '.' || $filename === '..') { continue; }
+		if($filename === '.htaccess') { continue; }
+		if(!is_file(COMMENTS_DIR . DIRECTORY_SEPARATOR . $filename)) { continue; }
+		$files []= $filename;
+	}
+	return $files;
 }
 
 if (isset($_GET['delete']))
@@ -59,12 +75,9 @@ if (isset($_GET['download']))
 
 echo RETURN_LINK;
 
-$yaml_files = glob(COMMENTS_DIR . '*.yaml');
-// Remove directory identifiers!
-$yaml_files = array_map('basename', $yaml_files);
-
-$num_comments = count($yaml_files);
-$max_comments = 5;
+$comment_files = get_comments();
+$num_comments = count($comment_files);
+$max_comments = 10;
 $num_files_opened = 0;
 
 $displayed_comments = ($max_comments > $num_comments) ? $num_comments : $max_comments;
@@ -76,7 +89,7 @@ echo "Showing $displayed_comments of $num_comments".HR;
 //	if (($num_files_opened++ < $displayed_comments) && !$fileinfo->isDot() && ($fileinfo->getFilename() != 'index.php')) 
 //	    list_file_contents($directory_name . DIRECTORY_SEPARATOR . $fileinfo->getFilename());
 
-foreach ($yaml_files as $filename) {
+foreach ($comment_files as $filename) {
 	if ($num_files_opened++ < $displayed_comments) 
 	{
 	    list_file_contents($filename);
