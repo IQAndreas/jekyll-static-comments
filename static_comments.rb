@@ -98,12 +98,12 @@ module StaticComments
 				if self.content =~ /\A(---\s*\n.*?\n?)^(---\s*$\n?)/m
 					self.content = $POSTMATCH
 					self.data = YAML.safe_load($1)
-					#Octopress: self.data = YAML.load($1)
+					#OCTOPRESS: self.data = YAML.load($1)
 				else
 					# It's all YAML! (maybe)
 					# This is to accomodate for comments generated in older versions of Jekyll Static Comments
 					self.data = YAML.safe_load(self.content)
-					#Octopress: self.data = YAML.load(self.content)
+					#OCTOPRESS: self.data = YAML.load(self.content)
 					if (data.key?('comment'))
 						self.content = data['comment']
 						data.delete('comment')
@@ -200,7 +200,7 @@ end
 class Jekyll::Post
 	include StaticComments
 	# Already contains 'id' property
-
+	
 	alias :to_liquid_without_comments :to_liquid
 	def to_liquid(attrs = nil)
 		data = (attrs.nil? ? to_liquid_without_comments() : to_liquid_without_comments(attrs))
@@ -214,13 +214,41 @@ class Jekyll::Page
 	alias :to_liquid_without_comments :to_liquid
 	def to_liquid(attrs = nil)
 		data = (attrs.nil? ? to_liquid_without_comments() : to_liquid_without_comments(attrs))
-		data.deep_merge(self.liquid_comment_attributes)
+		data = data.deep_merge(self.liquid_comment_attributes)
+		data.deep_merge({ 'id' => self.id })
+		#OCTOPRESS: data.deep_merge({ 'id' => self.id, 'url' => self.fixed_octopress_url })
 	end
 	
 	def id
 		return data['id'] if self.data.key? 'id'
-		self.url
-	end 
+		self.slug
+	end
+	
+	#  Sample output:
+	# URL: /contact.html		SLUG: /contact
+	# URL: /contact.htm			SLUG: /contact
+	# URL: contact.html			SLUG: contact		# The output only starts with a forward-slash if the input does...
+	# URL: /contact/index.html	SLUG: /contact/
+	# URL: /index.html			SLUG: /
+	# URL: /index/index.html	SLUG: /index/
+	# URL: /index/page.html		SLUG: /index/page
+	# URL: index.html			SLUG: (empty string)# NOTICE!
+	# URL: /dummy/.html			SLUG: /dummy/		# Just don't use stupid page names like this
+	# URL: /.html				SLUG: /				# Again, I'm just too lazy to account for stupid cases
+	# URL: /funny/images/cats.html	SLUG: /funny/images/cats
+	def slug
+		# If `html?` remove trailing '.html' (or trailing '.htm')
+		# If `index?` remove trailing 'index.html'
+		# Done with regex instead of calling those two functions
+		self.url.sub( /(index)?\.html?$/ , "" )
+		#OCTOPRESS: self.fixed_octopress_url.sub( /(index)?\.html?$/ , "" )
+	end
+	
+	#OCTOPRESS:
+	#def fixed_octopress_url
+	#	# The preceeding "/" is because the `self.url` returned from category pages doesn't begin with a slash.
+	#	File.join("/", @dir, self.url)
+	#end
 	
 end
 
