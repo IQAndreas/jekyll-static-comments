@@ -36,10 +36,30 @@ module StaticComments
 		}
 	end
 	
+	# Notice that this function means that some id's will be the same.
+	#  Sample output:
+	# URL: /contact.html		SLUG: /contact
+	# URL: /contact.htm			SLUG: /contact
+	# URL: contact.html			SLUG: /contact
+	# URL: /contact/index.html	SLUG: /contact
+	# URL: /index.html			SLUG: /
+	# URL: index.html			SLUG: /
+	# URL: (empty string)		SLUG: /
+	# URL: /index/index.html	SLUG: /index
+	# URL: /index/page.html		SLUG: /index/page
+	# URL: /dummy/.html			SLUG: /dummy		# Just don't use stupid page names like this
+	# URL: /.html				SLUG: /				# Again, I'm just too lazy to account for stupid cases
+	# URL: /funny/images/cats.html	SLUG: /funny/images/cats
+	def self.slug(id)
+		value = id.sub( /(\/)?(index)?\.html?$/ , "" )
+		value = "/" + value if (value[0, 1] != "/")
+		value
+	end	
+	
 	# Find all the comments for a post or page with the specified id
 	def self.find_for(site, id)
 		@comment_list ||= read_comments(site)
-		@comment_list[id]
+		@comment_list[slug(id)]
 	end
 	
 	# Read all the comments files in the site, and return them as a hash of
@@ -221,27 +241,8 @@ class Jekyll::Page
 	
 	def id
 		return data['id'] if self.data.key? 'id'
-		self.slug
-	end
-	
-	#  Sample output:
-	# URL: /contact.html		SLUG: /contact
-	# URL: /contact.htm			SLUG: /contact
-	# URL: contact.html			SLUG: contact		# The output only starts with a forward-slash if the input does...
-	# URL: /contact/index.html	SLUG: /contact/
-	# URL: /index.html			SLUG: /
-	# URL: /index/index.html	SLUG: /index/
-	# URL: /index/page.html		SLUG: /index/page
-	# URL: index.html			SLUG: (empty string)# NOTICE!
-	# URL: /dummy/.html			SLUG: /dummy/		# Just don't use stupid page names like this
-	# URL: /.html				SLUG: /				# Again, I'm just too lazy to account for stupid cases
-	# URL: /funny/images/cats.html	SLUG: /funny/images/cats
-	def slug
-		# If `html?` remove trailing '.html' (or trailing '.htm')
-		# If `index?` remove trailing 'index.html'
-		# Done with regex instead of calling those two functions
-		self.url.sub( /(index)?\.html?$/ , "" )
-		#OCTOPRESS: self.fixed_octopress_url.sub( /(index)?\.html?$/ , "" )
+		StaticComments::slug(self.url)
+		#OCTOPRESS: StaticComments::slug(self.fixed_octopress_url)
 	end
 	
 	#OCTOPRESS:
